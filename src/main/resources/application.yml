@@ -6,3 +6,11 @@ spring:
         options:
           model: "gpt-3.5-turbo"
           temperature: 0.5
+
+cache-props:
+  redis:
+    host: redis://localhost:6379
+  caffeine:
+    expire-after-access-days: 30
+    maximum-size: 200
+  type: redis
