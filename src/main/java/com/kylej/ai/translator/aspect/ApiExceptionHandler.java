@@ -12,6 +12,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    /**
+     * Handles InvalidLanguageException and returns a 400 Bad Request response. Functionally, a request was sent with a
+     * language that couldn't be resolved, which is why a 400 response is chosen
+     *
+     * @param e the exception
+     * @return the response entity
+     */
     @ExceptionHandler(InvalidLanguageException.class)
     public ResponseEntity<ErrorResponse> handleException(InvalidLanguageException e) {
         ErrorResponse.builder().message(e.getMessage()).build();

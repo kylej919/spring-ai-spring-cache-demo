@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ChatTranslationRequest {
 
+    // the language we want to translate to
     private String language;
+
+    // the text we want to translate
     private String textToTranslate;
 }
