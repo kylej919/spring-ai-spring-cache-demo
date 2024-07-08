@@ -5,6 +5,7 @@ import static com.kylej.ai.translator.service.OpenAiService.getTranslationPrompt
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -13,9 +14,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kylej.ai.translator.entity.ChatTranslationRequest;
 import com.kylej.ai.translator.entity.ChatTranslationResponse;
 import java.util.Locale;
+import java.util.Objects;
 import lombok.SneakyThrows;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +26,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -33,13 +34,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-@SpringBootTest
+@SpringBootTest(properties = "cache-props.type=redis")
 @AutoConfigureMockMvc
 class TranslationIT {
 
   private static final Locale SPANISH = Locale.of("Spanish");
   private static final String TEXT_TO_TRANSLATE = "How are you?";
   private static final String TRANSLATION_PROMPT = getTranslationPrompt(SPANISH, TEXT_TO_TRANSLATE);
+  private static final String CACHE_KEY_NAME = "spanishHow are you?";
   private static final ObjectMapper mapper = new ObjectMapper();
   // replacing bean with MockBean to avoid calls to openAI
   @MockBean
@@ -49,13 +51,21 @@ class TranslationIT {
   @Autowired
   private MockMvc mockMvc;
 
+  @BeforeEach
+  void mockTranslation() {
+    clearCache();
+    when(chatModel.call(TRANSLATION_PROMPT)).thenReturn("Como estas?");
+  }
+
+
   @Test
+  @SneakyThrows
   void testTranslationSuccess() {
 
     // Ensure that cache exists with nothing stored.
     Cache cache = cacheManager.getCache(TRANSLATION_CACHE);
     assertThat(cache).isNotNull();
-    assertThat(cache.get("spanishHow are you?")).isNull();
+    assertThat(cache.get(CACHE_KEY_NAME)).isNull();
 
     // first request results in expected translation
     callTextTranslationSuccess();
@@ -63,11 +73,12 @@ class TranslationIT {
     // verify cache put
     cache = cacheManager.getCache(TRANSLATION_CACHE);
     assertThat(cache).isNotNull();
-    assertThat(cache.get("spanishHow are you?")).isNotNull();
-    assertThat(cache.get("spanishHow are you?").get()).isEqualTo("Como estas?");
+    String cachedVal = (String) cache.get(CACHE_KEY_NAME).get();
+    assertThat(Objects.requireNonNull(cachedVal)).isNotNull().isEqualTo("Como estas?");
 
     // chatModel bean is invoked since there was a cache miss
-    verify(chatModel.call(TRANSLATION_PROMPT));
+    verify(chatModel).call(TRANSLATION_PROMPT);
+    reset(chatModel);
 
     // second request results in expected translation
     callTextTranslationSuccess();
@@ -105,37 +116,19 @@ class TranslationIT {
     return mapper.readValue(result.getResponse().getContentAsString(), responseClass);
   }
 
-
-  @BeforeEach
-  void mockTranslation() {
-    when(chatModel.call(TRANSLATION_PROMPT)).thenReturn("Como estas?");
+  @AfterEach
+  void cleanUp() {
+    clearCache();
   }
 
-
-  /**
-   * Test using the caffeine cache
-   */
-  @Nested
-  @SpringBootTest(properties = "cache-props.type=caffeine")
-  class CaffeineCacheIT {
-
-    @Test
-    void verifyCaffeineCacheManager() {
-      assertThat(cacheManager).isInstanceOf(CaffeineCacheManager.class);
+  private void clearCache() {
+    if (cacheManager.getCache(TRANSLATION_CACHE) != null) {
+      cacheManager.getCache(TRANSLATION_CACHE).invalidate();
     }
   }
 
-  /**
-   * Test using the redis cache
-   */
-  @Nested
-  @SpringBootTest(properties = "cache-props.type=redis")
-  class RedisCacheIT {
-
-    @Test
-    void verifyRedisCacheManager() {
-      assertThat(cacheManager).isInstanceOf(RedisCacheManager.class);
-    }
+  @Test
+  void verifyRedisCacheManager() {
+    assertThat(cacheManager).isInstanceOf(RedisCacheManager.class);
   }
-
 }

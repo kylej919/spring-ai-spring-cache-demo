@@ -50,7 +50,7 @@ public class CacheConfiguration {
    * Caffeine cache manager, present if cache-props.type is CAFFEINE
    */
   @Bean
-  @ConditionalOnProperty(prefix = "cache-props", name = "type", havingValue = "CAFFEINE", matchIfMissing = true)
+  @ConditionalOnProperty(prefix = "cache-props", name = "type", havingValue = "caffeine", matchIfMissing = true)
   public CaffeineCacheManager caffeineCacheManager() {
     CaffeineCacheManager cacheManager = new CaffeineCacheManager();
     cacheManager.setCaffeine(Caffeine.newBuilder()
