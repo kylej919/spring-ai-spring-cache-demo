@@ -1,4 +1,0 @@
-spring:
-  ai:
-    openai:
-      api-key: "enter-key-here"
