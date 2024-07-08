@@ -6,8 +6,10 @@ to communicate with chatGpt.
 This demo currently only tests translating text using chatGpt, but there are many other applications and AI models that
 can be configured to be used
 
-To use, replace the configured value in spring.ai.openai.api-key with the value of a chatGpt API key, start the server (
-I run Application.java in IntelliJ), and run a sample curl command like this:
+To use, do the following:
+1. In [application.yml](https://github.com/kylej919/ai-demo/blob/main/src/main/resources/application.yml) replace the configured value in spring.ai.openai.api-key with the value of a chatGpt API key
+2. Start the server (I run Application.java in IntelliJ). Requires Java 21 and maven to be installed
+3. Run a sample curl command like this:
 
 ``` 
 curl --location 'http://localhost:8080/v1/translate' \
@@ -17,3 +19,4 @@ curl --location 'http://localhost:8080/v1/translate' \
 "textToTranslate": "Hello, world!"
 }'
 ``` 
+but use whatever language and text you want
